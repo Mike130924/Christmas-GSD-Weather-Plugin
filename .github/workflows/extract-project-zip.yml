@@ -54,3 +54,6 @@ jobs:
             git commit -m "Extract Android project into repository root"
             git push
           fi
+git pull --rebase origin main
+            git push origin HEAD:main
+          fi
