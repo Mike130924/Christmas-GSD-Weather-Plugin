@@ -32,9 +32,10 @@ jobs:
           test -d "$ROOT/app"
           test -d "$ROOT/api"
 
-          # Copy everything, including hidden files such as .github, into the repo root.
-          # Keep this extraction workflow itself and any existing root workflow files.
-          cp -a "$ROOT"/. .
+          # Do not copy the ZIP's nested GitHub workflows.
+# The repository already has its own build and extraction workflows.
+rm -rf "$ROOT/.github"
+cp -a "$ROOT"/. .
           rm -rf _project_extract
 
       - name: Commit extracted project
