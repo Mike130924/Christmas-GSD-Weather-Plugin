@@ -1,0 +1,49 @@
+name: Extract Android Project ZIP into Repository Root
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'Christmas GSD Weather Plugin.zip'
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract project files into repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="Christmas GSD Weather Plugin.zip"
+          test -f "$ARCHIVE"
+          mkdir -p _project_extract
+          unzip -q "$ARCHIVE" -d _project_extract
+
+          ROOT="_project_extract/Christmas GSD Weather Plugin"
+          test -d "$ROOT"
+          test -f "$ROOT/settings.gradle.kts"
+          test -d "$ROOT/app"
+          test -d "$ROOT/api"
+
+          # Copy everything, including hidden files such as .github, into the repo root.
+          # Keep this extraction workflow itself and any existing root workflow files.
+          cp -a "$ROOT"/. .
+          rm -rf _project_extract
+
+      - name: Commit extracted project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No extracted files changed."
+          else
+            git commit -m "Extract Android project into repository root"
+            git push
+          fi
