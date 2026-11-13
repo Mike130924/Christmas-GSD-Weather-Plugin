@@ -9,51 +9,87 @@ on:
 
 permissions:
   contents: write
+  workflows: write
+
+concurrency:
+  group: extract-android-project
+  cancel-in-progress: false
 
 jobs:
   extract:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           persist-credentials: true
 
       - name: Extract project files into repository root
         shell: bash
         run: |
           set -euo pipefail
+
           ARCHIVE="Christmas GSD Weather Plugin.zip"
           test -f "$ARCHIVE"
+
           mkdir -p _project_extract
           unzip -q "$ARCHIVE" -d _project_extract
 
           ROOT="_project_extract/Christmas GSD Weather Plugin"
+
           test -d "$ROOT"
           test -f "$ROOT/settings.gradle.kts"
           test -d "$ROOT/app"
           test -d "$ROOT/api"
 
-          # Do not copy the ZIP's nested GitHub workflows.
+          # Exclude workflows contained inside the ZIP.
           rm -rf "$ROOT/.github"
+
+          # Copy the Android project into the repository root.
           cp -a "$ROOT"/. .
 
-          # Remove the temporary extraction directory.
+          # Remove temporary extraction files.
           rm -rf _project_extract
 
-      - name: Commit extracted project
+          # Verify the extracted project.
+          test -f settings.gradle.kts
+          test -f build.gradle.kts
+          test -d app
+          test -d api
+
+      - name: Commit and push extracted project
         shell: bash
         run: |
           set -euo pipefail
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add -A
+
           if git diff --cached --quiet; then
             echo "No extracted files changed."
-          else
-            git commit -m "Extract Android project into repository root"
-            git push
+            exit 0
           fi
-git pull --rebase origin main
-            git push origin HEAD:main
-          fi
+
+          git commit -m "Extract Android project into repository root"
+
+          for attempt in 1 2 3; do
+            echo "Push attempt $attempt"
+
+            git fetch origin main
+            git rebase origin/main
+
+            if git push origin HEAD:main; then
+              echo "Project files successfully pushed to main."
+              exit 0
+            fi
+
+            echo "Push rejected. Retrying..."
+            sleep 3
+          done
+
+          echo "Unable to push after three attempts."
+          exit 1
