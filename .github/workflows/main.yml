@@ -1,3 +1,4 @@
+
 name: Christmas GSD Weather Plugin - Android Build
 
 on:
@@ -15,6 +16,7 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -39,8 +41,6 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
-      # Pull requests build debug only because GitHub does not expose repository
-      # secrets to forked PRs. Main-branch and tag builds use the permanent key.
       - name: Build Debug APK (pull requests)
         if: github.event_name == 'pull_request'
         run: gradle :app:assembleDebug --stacktrace
@@ -71,7 +71,7 @@ jobs:
         run: |
           APK=app/build/outputs/apk/release/app-release.apk
           test -f "$APK"
-          apksigner verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           cp "$APK" app/build/outputs/apk/release/Christmas-GSD-Weather-Plugin.apk
 
       - name: Rename debug APK
