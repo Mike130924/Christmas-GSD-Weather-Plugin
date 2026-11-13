@@ -526,6 +526,7 @@ class SettingsActivity : Activity() {
     ViewGroup.LayoutParams.MATCH_PARENT,
     ViewGroup.LayoutParams.WRAP_CONTENT,
 ))
+        }
         setContentView(scroll)
     }
 
