@@ -1,11 +1,10 @@
-
 name: Extract Android Project ZIP into Repository Root
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - 'Christmas GSD Weather Plugin.zip'
+      - 'Christmas-GSD-Weather-Plugin-v0.5.2-TV-Settings-Fixes-Source.zip'
 
 permissions:
   contents: write
@@ -25,40 +24,42 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      - name: Extract project files into repository root
+      - name: Extract Android project ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ARCHIVE="Christmas GSD Weather Plugin.zip"
-          test -f "$ARCHIVE"
+          ARCHIVE="Christmas-GSD-Weather-Plugin-v0.5.2-TV-Settings-Fixes-Source.zip"
 
+          test -f "$ARCHIVE"
           mkdir -p _project_extract
           unzip -q "$ARCHIVE" -d _project_extract
 
-          ROOT="_project_extract/Christmas GSD Weather Plugin"
+          if [ -f "_project_extract/settings.gradle.kts" ]; then
+            ROOT="_project_extract"
+          elif [ -f "_project_extract/Christmas GSD Weather Plugin/settings.gradle.kts" ]; then
+            ROOT="_project_extract/Christmas GSD Weather Plugin"
+          else
+            echo "Android project root not found in ZIP."
+            find _project_extract -maxdepth 3 -type f | head -50
+            exit 1
+          fi
 
-          test -d "$ROOT"
           test -f "$ROOT/settings.gradle.kts"
           test -d "$ROOT/app"
           test -d "$ROOT/api"
 
-          # Exclude workflows contained inside the ZIP.
           rm -rf "$ROOT/.github"
 
-          # Copy the Android project into the repository root.
           cp -a "$ROOT"/. .
 
-          # Remove temporary extraction files.
           rm -rf _project_extract
 
-          # Verify the extracted project.
           test -f settings.gradle.kts
-          test -f build.gradle.kts
           test -d app
           test -d api
 
-      - name: Commit and push extracted project
+      - name: Commit extracted Android project
         shell: bash
         run: |
           set -euo pipefail
@@ -69,26 +70,10 @@ jobs:
           git add -A
 
           if git diff --cached --quiet; then
-            echo "No extracted files changed."
+            echo "No project changes detected."
             exit 0
           fi
 
-          git commit -m "Extract Android project into repository root"
+          git commit -m "Apply v0.5.2 Android project source"
 
-          for attempt in 1 2 3; do
-            echo "Push attempt $attempt"
-
-            git fetch origin main
-            git rebase origin/main
-
-            if git push origin HEAD:main; then
-              echo "Project files successfully pushed to main."
-              exit 0
-            fi
-
-            echo "Push rejected. Retrying..."
-            sleep 3
-          done
-
-          echo "Unable to push after three attempts."
-          exit 1
+          git push origin HEAD:main
