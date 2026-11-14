@@ -1,4 +1,3 @@
-
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 
 android {
@@ -21,8 +20,8 @@ android {
         applicationId = "com.christmasgsd.weather"
         minSdk = 23
         targetSdk = 28
-        versionCode = 6
-        versionName = "0.5.2"
+        versionCode = providers.gradleProperty("appVersionCode").orNull?.toIntOrNull() ?: 6
+        versionName = providers.gradleProperty("appVersionName").orNull ?: "0.5.2"
     }
 
     lint {
