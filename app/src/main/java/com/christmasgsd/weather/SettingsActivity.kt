@@ -762,7 +762,7 @@ class SettingsActivity : Activity() {
         dialog.show()
     }
 
-        private fun field(root: LinearLayout, label: String, value: String): EditText {
+    private fun field(root: LinearLayout, label: String, value: String): EditText {
         root.addView(TextView(this).apply { text = label; textSize = 15f; setPadding(0, 10, 0, 4) })
         return EditText(this).also { input ->
             input.setSingleLine(true)
