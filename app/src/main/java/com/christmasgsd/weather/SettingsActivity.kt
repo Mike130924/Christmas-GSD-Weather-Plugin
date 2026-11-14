@@ -774,9 +774,8 @@ class SettingsActivity : Activity() {
             input.isFocusableInTouchMode = true
             input.isClickable = true
             input.isLongClickable = true
-
-            // Android TV: open the keyboard only when the user activates the field.
-            // Moving D-pad focus between fields will not automatically open it.
+            // Android TV: make the field selectable with the D-pad and explicitly
+            // request the on-screen keyboard when the user activates it.
             input.setOnClickListener {
                 input.requestFocus()
                 input.post {
@@ -784,7 +783,14 @@ class SettingsActivity : Activity() {
                         .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
                 }
             }
-
+            input.setOnFocusChangeListener { view, hasFocus ->
+                if (hasFocus) {
+                    view.post {
+                        (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                            .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+                    }
+                }
+            }
             input.setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
                     (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
@@ -793,10 +799,10 @@ class SettingsActivity : Activity() {
                     true
                 } else false
             }
-
             root.addView(input)
         }
     }
+
     private fun loadSavedBackgrounds(prefs: android.content.SharedPreferences) {
         savedBackgroundUris.clear()
         runCatching {

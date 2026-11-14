@@ -1,15 +1,8 @@
-
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 
 android {
     namespace = "com.christmasgsd.weather"
     compileSdk = 35
-
-    // This is a sideloaded Projectivy provider, not a Google Play release.
-    // Keep its existing target SDK and suppress only Play's expired-target lint check.
-    lint {
-        disable += "ExpiredTargetSdkVersion"
-    }
 
     signingConfigs {
         create("release") {
