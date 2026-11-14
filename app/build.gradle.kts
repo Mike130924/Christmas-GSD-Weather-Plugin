@@ -1,12 +1,8 @@
-
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 
 android {
     namespace = "com.christmasgsd.weather"
     compileSdk = 35
-lint {
-    disable += "ExpiredTargetSdkVersion"
-}
 
     signingConfigs {
         create("release") {
@@ -24,8 +20,8 @@ lint {
         applicationId = "com.christmasgsd.weather"
         minSdk = 23
         targetSdk = 28
-        versionCode = providers.gradleProperty("appVersionCode").orNull?.toInt() ?: 5
-        versionName = providers.gradleProperty("appVersionName").orNull ?: "0.5.0"
+        versionCode = 5
+        versionName = "0.5.0"
     }
 
     buildTypes {
