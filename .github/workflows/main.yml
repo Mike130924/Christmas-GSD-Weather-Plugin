@@ -85,6 +85,18 @@ jobs:
             gradle :app:assembleRelease --stacktrace
           fi
 
+      - name: Verify APK version metadata
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          BADGING=$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 1)
+          echo "$BADGING"
+          echo "$BADGING" | grep -F "versionCode='$APP_VERSION_CODE' versionName='$APP_VERSION_NAME'" || {
+            echo "ERROR: APK metadata does not match requested release $APP_VERSION_NAME ($APP_VERSION_CODE). Refusing to publish."
+            exit 1
+          }
+
       - name: Verify release APK signature
         if: github.event_name != 'pull_request'
         run: |
