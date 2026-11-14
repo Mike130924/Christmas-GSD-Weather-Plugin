@@ -635,10 +635,10 @@ class SettingsActivity : Activity() {
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             clipToPadding = false
             setPadding(0, 0, 0, 24)
-            addView(root, android.widget.FrameLayout.LayoutParams(
-    ViewGroup.LayoutParams.MATCH_PARENT,
-    ViewGroup.LayoutParams.WRAP_CONTENT,
-))
+            addView(root, ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ))
         }
         setContentView(scroll)
     }
@@ -781,14 +781,6 @@ class SettingsActivity : Activity() {
                 input.post {
                     (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
                         .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
-                }
-            }
-            input.setOnFocusChangeListener { view, hasFocus ->
-                if (hasFocus) {
-                    view.post {
-                        (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                            .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
-                    }
                 }
             }
             input.setOnEditorActionListener { _, actionId, _ ->
