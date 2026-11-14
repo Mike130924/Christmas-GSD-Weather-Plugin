@@ -20,12 +20,8 @@ android {
         applicationId = "com.christmasgsd.weather"
         minSdk = 23
         targetSdk = 28
-        versionCode = providers.gradleProperty("appVersionCode").orNull?.toIntOrNull() ?: 6
-        versionName = providers.gradleProperty("appVersionName").orNull ?: "0.5.2"
-    }
-
-    lint {
-        disable += "ExpiredTargetSdkVersion"
+        versionCode = 5
+        versionName = "0.5.0"
     }
 
     buildTypes {
