@@ -4,6 +4,9 @@ plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 android {
     namespace = "com.christmasgsd.weather"
     compileSdk = 35
+lint {
+    disable += "ExpiredTargetSdkVersion"
+}
 
     signingConfigs {
         create("release") {
