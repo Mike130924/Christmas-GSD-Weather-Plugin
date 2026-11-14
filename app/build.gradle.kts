@@ -1,3 +1,4 @@
+
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }
 
 android {
@@ -22,6 +23,10 @@ android {
         targetSdk = 28
         versionCode = 5
         versionName = "0.5.0"
+    }
+
+    lint {
+        disable += "ExpiredTargetSdkVersion"
     }
 
     buildTypes {
