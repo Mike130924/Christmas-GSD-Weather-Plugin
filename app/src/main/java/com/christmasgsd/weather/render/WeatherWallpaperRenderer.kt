@@ -120,9 +120,6 @@ data class WallpaperRenderConfig(
     val overlayScaleY: Float = 0.4402f,
     val overlayOriginX: Float = -540f,
     val overlayOriginY: Float = -80f,
-    /** Independent panel geometry scaling; does not affect weather content transforms. */
-    val panelScaleX: Float = 1.0f,
-    val panelScaleY: Float = 1.0f,
     val warningHeadline: String = "",
     val warningSeverity: String = "",
     val warnings: List<WarningDisplay> = emptyList(),
@@ -171,7 +168,7 @@ class WeatherWallpaperRenderer {
             when (phase) { 0 -> -2.5f; 1 -> 2.5f; 2 -> 2.5f; else -> -2.5f }
         } else 0f
         canvas.translate(0f, rowOffset + burnOffset)
-        drawPanel(canvas, config.palette, config.fullScreenWhenIdle, config.panelScaleX, config.panelScaleY)
+        drawPanel(canvas, config.palette, config.fullScreenWhenIdle)
         drawClock(canvas, config.clock, now, config.palette)
         // Draw decorative trim first: an active warning must remain legible above it.
         drawFestiveTrim(canvas, config.palette)
@@ -285,20 +282,11 @@ class WeatherWallpaperRenderer {
         }
     }
 
-    private fun drawPanel(
-        canvas: Canvas,
-        palette: WallpaperPalette,
-        fullScreenWhenIdle: Boolean,
-        scaleX: Float,
-        scaleY: Float,
-    ) {
+    private fun drawPanel(canvas: Canvas, palette: WallpaperPalette, fullScreenWhenIdle: Boolean) {
         // Idle mode deliberately uses the full canvas. Normal launcher mode keeps
         // a wider safe inset so the wallpaper panel does not crowd launcher chrome.
         val inset = if (fullScreenWhenIdle) 0f else 34f
         val panel = RectF(inset, inset, DESIGN_WIDTH - inset, DESIGN_HEIGHT - inset)
-        canvas.save()
-        canvas.scale(scaleX.coerceIn(0.5f, 1.5f), scaleY.coerceIn(0.5f, 1.5f),
-            DESIGN_WIDTH / 2f, DESIGN_HEIGHT / 2f)
         p.style = Paint.Style.FILL
         p.color = palette.panel
         p.clearShadowLayer()
@@ -314,7 +302,6 @@ class WeatherWallpaperRenderer {
         p.color = withAlpha(palette.border, palette.borderAlpha)
         canvas.drawRoundRect(panel, 34f, 34f, p)
         p.style = Paint.Style.FILL
-        canvas.restore()
     }
 
     private fun drawClock(canvas: Canvas, style: ClockStyle, now: Date, palette: WallpaperPalette) {

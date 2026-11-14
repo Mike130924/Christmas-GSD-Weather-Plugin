@@ -8,7 +8,7 @@ import org.json.JSONObject
 object ThemeProfiles {
     private const val THEMES_KEY = "saved_themes_json"
     private val appearancePrefixes = listOf(
-        "palette.", "clock.", "date.", "readout.", "background.", "icon.", "forecast.", "layout.", "weather.", "panel."
+        "palette.", "clock.", "date.", "readout.", "background.", "icon.", "forecast.", "layout.", "weather."
     )
     private val appearanceKeys = setOf(
         "background_uri", "background_mode", "active_theme",
@@ -21,15 +21,13 @@ object ThemeProfiles {
         root.keys().asSequence().toList().sortedBy { it.lowercase() }
     }.getOrDefault(emptyList())
 
-    enum class SaveResult { SUCCESS, DUPLICATE, INVALID_NAME, STORAGE_ERROR }
-
-    /** Save under a new name; report duplicate names separately from persistence failures. */
-    fun saveWithResult(prefs: SharedPreferences, name: String): SaveResult {
+    /** Save under a new name; existing profiles are never silently overwritten. */
+    fun save(prefs: SharedPreferences, name: String): Boolean {
         val clean = name.trim()
-        if (clean.isEmpty() || clean.length > 60) return SaveResult.INVALID_NAME
-        return try {
+        if (clean.isEmpty()) return false
+        return runCatching {
             val root = JSONObject(prefs.getString(THEMES_KEY, "{}") ?: "{}")
-            if (root.has(clean)) return SaveResult.DUPLICATE
+            if (root.has(clean)) return false
             val snapshot = JSONObject()
             prefs.all.forEach { (key, value) ->
                 if (isAppearanceKey(key) && value != null) snapshot.put(key, value)
@@ -43,16 +41,9 @@ object ThemeProfiles {
                 snapshot.put("palette.snow", "#FFFFFFFF")
             }
             root.put(clean, snapshot)
-            if (prefs.edit().putString(THEMES_KEY, root.toString()).putString("active_theme", clean).commit())
-                SaveResult.SUCCESS else SaveResult.STORAGE_ERROR
-        } catch (_: Throwable) {
-            SaveResult.STORAGE_ERROR
-        }
+            prefs.edit().putString(THEMES_KEY, root.toString()).putString("active_theme", clean).commit()
+        }.getOrDefault(false)
     }
-
-    /** Backwards-compatible Boolean API for existing callers. */
-    fun save(prefs: SharedPreferences, name: String): Boolean =
-        saveWithResult(prefs, name) == SaveResult.SUCCESS
 
 
     /** Replace an existing profile only when the caller has obtained explicit confirmation. */
