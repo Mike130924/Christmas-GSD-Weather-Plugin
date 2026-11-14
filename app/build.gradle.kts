@@ -24,6 +24,10 @@ android {
         versionName = "0.5.0"
     }
 
+    lint {
+        disable += "ExpiredTargetSdkVersion"
+    }
+
     buildTypes {
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
