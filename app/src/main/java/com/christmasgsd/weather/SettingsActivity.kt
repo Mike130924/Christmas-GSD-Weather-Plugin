@@ -31,7 +31,7 @@ class SettingsActivity : Activity() {
     private lateinit var latitude: EditText
     private lateinit var longitude: EditText
     private lateinit var locationName: EditText
-    private lateinit var themeName: EditText
+    private lateinit var themeName: TextView
     private lateinit var themePicker: Spinner
     private lateinit var burnInProtection: CheckBox
     private lateinit var fullScreenWhenIdle: CheckBox
@@ -51,6 +51,8 @@ class SettingsActivity : Activity() {
     private lateinit var overlaySy: SeekBar
     private lateinit var overlayOx: SeekBar
     private lateinit var overlayOy: SeekBar
+    private lateinit var panelScaleX: SeekBar
+    private lateinit var panelScaleY: SeekBar
     private lateinit var palettePreset: Spinner
     private val paletteFields = linkedMapOf<String, EditText>()
     private lateinit var showClock: CheckBox
@@ -301,6 +303,19 @@ class SettingsActivity : Activity() {
         overlayOy = seek(root, "Overlay origin Y", ((prefs.getString("overlay.origin_y", "-80")?.toFloatOrNull() ?: -80f) + 1000).toInt(), 2000)
 
         root.addView(TextView(this).apply {
+            text = "Weather panel size"
+            textSize = 22f
+            setPadding(0, 28, 0, 8)
+        })
+        root.addView(TextView(this).apply {
+            text = "These controls resize the panel itself. They do not change the weather text or the six overlay layout controls above."
+            textSize = 13f
+            setPadding(8, 0, 0, 8)
+        })
+        panelScaleX = seek(root, "Panel horizontal scale (%)", prefs.getInt("panel.scale_x", 100).coerceIn(50, 150), 150).apply { if (progress < 50) progress = 50 }
+        panelScaleY = seek(root, "Panel vertical scale (%)", prefs.getInt("panel.scale_y", 100).coerceIn(50, 150), 150).apply { if (progress < 50) progress = 50 }
+
+        root.addView(TextView(this).apply {
             text = "Colour palette & appearance"
             textSize = 22f
             setPadding(0, 28, 0, 8)
@@ -467,29 +482,26 @@ class SettingsActivity : Activity() {
         worldWeatherWatch.setSelection(prefs.getInt("weather.world_watch_mode", 0).coerceIn(0, 3))
         root.addView(worldWeatherWatch)
 
-        themeName = field(root, "New theme name (e.g. Christmas GSD)", "")
-        // Use a dedicated text-entry dialog for Android TV. The dialog's EditText
-        // receives D-pad focus and opens the system TV keyboard; the underlying
-        // settings field is only a display/selection target.
-        themeName.isFocusable = true
-        themeName.isFocusableInTouchMode = true
-        themeName.isCursorVisible = false
-        themeName.isClickable = true
-        themeName.setOnClickListener { showThemeNameDialog() }
+        root.addView(TextView(this).apply {
+            text = "Theme name"
+            textSize = 15f
+            setPadding(0, 10, 0, 4)
+        })
+        themeName = TextView(this).apply {
+            text = "No theme name entered"
+            textSize = 18f
+            setPadding(12, 14, 12, 14)
+            setBackgroundColor(Color.DKGRAY)
+            contentDescription = "Entered theme name"
+        }
+        root.addView(themeName)
+        root.addView(Button(this).apply {
+            text = "Enter theme name"
+            setOnClickListener { showThemeNameDialog() }
+        })
         root.addView(Button(this).apply {
             text = "Save current layout as a new theme"
-            setOnClickListener {
-                val name = themeName.text.toString().trim()
-                if (name.isEmpty()) {
-                    themeName.error = "Enter a theme name"
-                } else if (ThemeProfiles.save(getSharedPreferences("weather", MODE_PRIVATE), name)) {
-                    themeName.setText("")
-                    refreshThemePicker()
-                    Toast.makeText(this@SettingsActivity, "Theme saved separately: $name", Toast.LENGTH_LONG).show()
-                } else {
-                    themeName.error = "That name already exists. Choose another name to protect the saved theme."
-                }
-            }
+            setOnClickListener { confirmSaveTheme() }
         })
         themePicker = Spinner(this)
         root.addView(themePicker)
@@ -714,6 +726,34 @@ class SettingsActivity : Activity() {
         })
     }
 
+    private fun confirmSaveTheme() {
+        val name = themeName.text.toString().trim()
+        if (name.isBlank() || name == "No theme name entered") {
+            Toast.makeText(this, "Enter a theme name first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Confirm new theme")
+            .setMessage("Save the current appearance as '$name'? Existing themes will not be overwritten.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Confirm save") { _, _ ->
+                when (ThemeProfiles.saveWithResult(getSharedPreferences("weather", MODE_PRIVATE), name)) {
+                    ThemeProfiles.SaveResult.SUCCESS -> {
+                        themeName.text = "No theme name entered"
+                        refreshThemePicker()
+                        Toast.makeText(this, "Theme saved separately: $name", Toast.LENGTH_LONG).show()
+                    }
+                    ThemeProfiles.SaveResult.DUPLICATE -> Toast.makeText(this,
+                        "A theme named '$name' already exists. Choose a different name.", Toast.LENGTH_LONG).show()
+                    ThemeProfiles.SaveResult.INVALID_NAME -> Toast.makeText(this,
+                        "Enter a valid theme name (1–60 characters).", Toast.LENGTH_LONG).show()
+                    ThemeProfiles.SaveResult.STORAGE_ERROR -> Toast.makeText(this,
+                        "The theme could not be saved because storage failed. Your entered name has been kept.", Toast.LENGTH_LONG).show()
+                }
+            }
+            .show()
+    }
+
     private fun showThemeNameDialog() {
         val editor = EditText(this).apply {
             setSingleLine(true)
@@ -748,7 +788,7 @@ class SettingsActivity : Activity() {
                     editor.error = "Enter a theme name"
                     editor.requestFocus()
                 } else {
-                    themeName.setText(entered)
+                    themeName.text = entered
                     dialog.dismiss()
                 }
             }
@@ -776,6 +816,8 @@ class SettingsActivity : Activity() {
             input.isLongClickable = true
             // Android TV: make the field selectable with the D-pad and explicitly
             // request the on-screen keyboard when the user activates it.
+            // D-pad focus alone must never summon the TV keyboard. Activation
+            // (OK/click) is the deliberate request to edit this field.
             input.setOnClickListener {
                 input.requestFocus()
                 input.post {
@@ -783,13 +825,13 @@ class SettingsActivity : Activity() {
                         .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
                 }
             }
-            input.setOnFocusChangeListener { view, hasFocus ->
-                if (hasFocus) {
-                    view.post {
-                        (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                            .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
-                    }
-                }
+            input.setOnKeyListener { _, keyCode, event ->
+                if ((keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                        keyCode == android.view.KeyEvent.KEYCODE_ENTER) &&
+                    event.action == android.view.KeyEvent.ACTION_UP) {
+                    input.performClick()
+                    true
+                } else false
             }
             input.setOnEditorActionListener { _, actionId, _ ->
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -1001,6 +1043,8 @@ class SettingsActivity : Activity() {
             .putString("overlay.scale_y", String.format(java.util.Locale.US, "%.4f", overlaySy.progress / 1000f))
             .putString("overlay.origin_x", (overlayOx.progress - 1000).toString())
             .putString("overlay.origin_y", (overlayOy.progress - 1000).toString())
+            .putInt("panel.scale_x", panelScaleX.progress.coerceIn(50, 150))
+            .putInt("panel.scale_y", panelScaleY.progress.coerceIn(50, 150))
             .putBoolean("clock.visible", showClock.isChecked)
             .putBoolean("date.visible", showDate.isChecked)
             .putBoolean("clock.24_hour", clockFormat.selectedItemPosition == 0)

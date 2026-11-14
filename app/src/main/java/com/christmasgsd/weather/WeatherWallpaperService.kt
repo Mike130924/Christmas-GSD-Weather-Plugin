@@ -241,6 +241,8 @@ class WeatherWallpaperService : Service() {
                     overlayScaleY = prefs.getString("overlay.scale_y", "0.4402")?.toFloatOrNull() ?: 0.4402f,
                     overlayOriginX = prefs.getString("overlay.origin_x", "-540")?.toFloatOrNull() ?: -540f,
                     overlayOriginY = prefs.getString("overlay.origin_y", "-80")?.toFloatOrNull() ?: -80f,
+                    panelScaleX = prefs.getInt("panel.scale_x", 100) / 100f,
+                    panelScaleY = prefs.getInt("panel.scale_y", 100) / 100f,
                     warningHeadline = activeWarnings.firstOrNull()?.headline.orEmpty(),
                     warningSeverity = activeWarnings.firstOrNull()?.severity.orEmpty(),
                     warnings = activeWarnings.map { warning ->
