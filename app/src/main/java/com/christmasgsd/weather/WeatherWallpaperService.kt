@@ -235,6 +235,12 @@ class WeatherWallpaperService : Service() {
                     showExtraStats = prefs.getBoolean("weather.show_extra_stats", false),
                     showSunTimes = prefs.getBoolean("weather.show_sun_times", false),
                     readoutScale = prefs.getString("readout.scale", "1.0")?.toFloatOrNull() ?: 1.0f,
+                    overlayTranslateX = prefs.getString("overlay.translate_x", "875")?.toFloatOrNull() ?: 875f,
+                    overlayTranslateY = prefs.getString("overlay.translate_y", "12.5")?.toFloatOrNull() ?: 12.5f,
+                    overlayScaleX = prefs.getString("overlay.scale_x", "0.5506")?.toFloatOrNull() ?: 0.5506f,
+                    overlayScaleY = prefs.getString("overlay.scale_y", "0.4402")?.toFloatOrNull() ?: 0.4402f,
+                    overlayOriginX = prefs.getString("overlay.origin_x", "-540")?.toFloatOrNull() ?: -540f,
+                    overlayOriginY = prefs.getString("overlay.origin_y", "-80")?.toFloatOrNull() ?: -80f,
                     warningHeadline = activeWarnings.firstOrNull()?.headline.orEmpty(),
                     warningSeverity = activeWarnings.firstOrNull()?.severity.orEmpty(),
                     warnings = activeWarnings.map { warning ->

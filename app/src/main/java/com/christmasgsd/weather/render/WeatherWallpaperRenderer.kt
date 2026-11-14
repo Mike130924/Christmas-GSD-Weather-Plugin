@@ -111,8 +111,15 @@ data class WallpaperRenderConfig(
     val showDaily: Boolean = true,
     val showExtraStats: Boolean = false,
     val showSunTimes: Boolean = false,
-    /** Uniform scale for weather readouts; panel and clock remain unchanged. */
+    /** Uniform scale for legacy weather readouts; panel and clock remain unchanged. */
     val readoutScale: Float = 1.0f,
+    /** Weather overlay uses its own logical design space; these are independent layout transforms. */
+    val overlayTranslateX: Float = 875f,
+    val overlayTranslateY: Float = 12.5f,
+    val overlayScaleX: Float = 0.5506f,
+    val overlayScaleY: Float = 0.4402f,
+    val overlayOriginX: Float = -540f,
+    val overlayOriginY: Float = -80f,
     val warningHeadline: String = "",
     val warningSeverity: String = "",
     val warnings: List<WarningDisplay> = emptyList(),
@@ -167,11 +174,20 @@ class WeatherWallpaperRenderer {
         drawFestiveTrim(canvas, config.palette)
         drawWarningBanner(canvas, config, now)
         canvas.save()
-        val readoutScale = config.readoutScale.coerceIn(0.75f, 1.35f)
-        canvas.scale(readoutScale, readoutScale, DESIGN_WIDTH / 2f, 340f)
+        // The weather overlay is authored in the renderer's stable logical coordinate
+        // system. Layout adjustments are applied as a separate transform, so changing
+        // placement/scale never requires rewriting the drawing coordinates.
+        canvas.translate(config.overlayTranslateX.coerceIn(-1000f, 2000f),
+            config.overlayTranslateY.coerceIn(-500f, 1000f))
+        canvas.scale(config.overlayScaleX.coerceIn(0.10f, 1.50f),
+            config.overlayScaleY.coerceIn(0.10f, 1.50f))
+        canvas.translate(config.overlayOriginX.coerceIn(-1000f, 1000f),
+            config.overlayOriginY.coerceIn(-1000f, 1000f))
+        val legacyScale = config.readoutScale.coerceIn(0.75f, 1.35f)
+        canvas.scale(legacyScale, legacyScale, DESIGN_WIDTH / 2f, 340f)
         drawCurrentWeather(canvas, weather, config)
         val optionalLines = drawOptionalWeather(canvas, weather, config)
-        canvas.restore() // Keep the forecast legible and inside the frame at every readout scale.
+        canvas.restore() // Forecast remains independently laid out in the main design space.
         if (config.showDaily) {
             // Keep the forecast below optional readouts instead of allowing hourly,
             // astronomy and statistics lines to collide with the forecast heading.

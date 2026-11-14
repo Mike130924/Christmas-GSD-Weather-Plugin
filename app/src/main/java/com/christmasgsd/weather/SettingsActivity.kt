@@ -3,6 +3,10 @@ package com.christmasgsd.weather
 import android.app.Activity
 import android.os.Bundle
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.EditorInfo
+import android.text.InputType
+import android.content.Context
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -17,6 +21,7 @@ import android.graphics.Color
 import android.content.Intent
 import android.net.Uri
 import android.widget.ImageView
+import android.widget.GridLayout
 import org.json.JSONArray
 import com.christmasgsd.weather.themes.ThemeProfiles
 import com.christmasgsd.weather.backup.PluginBackup
@@ -40,6 +45,12 @@ class SettingsActivity : Activity() {
     private lateinit var showWarningDetails: CheckBox
     private lateinit var readoutSize: SeekBar
     private lateinit var readoutSizeLabel: TextView
+    private lateinit var overlayTx: SeekBar
+    private lateinit var overlayTy: SeekBar
+    private lateinit var overlaySx: SeekBar
+    private lateinit var overlaySy: SeekBar
+    private lateinit var overlayOx: SeekBar
+    private lateinit var overlayOy: SeekBar
     private lateinit var palettePreset: Spinner
     private val paletteFields = linkedMapOf<String, EditText>()
     private lateinit var showClock: CheckBox
@@ -96,6 +107,33 @@ class SettingsActivity : Activity() {
             setBackgroundColor(Color.DKGRAY)
             minimumHeight = 150
         }
+
+        root.addView(TextView(this).apply {
+            text = "App updates"
+            textSize = 21f
+            setPadding(0, 24, 0, 6)
+        })
+        val updateStatus = TextView(this).apply {
+            text = "Check GitHub for the latest Christmas GSD Weather release."
+            textSize = 14f
+            setPadding(0, 4, 0, 8)
+            contentDescription = "App update status"
+        }
+        root.addView(Button(this).apply {
+            text = "Check for updates"
+            textSize = 18f
+            setPadding(18, 18, 18, 18)
+            setOnClickListener {
+                isEnabled = false
+                updateStatus.text = "Checking for updates…"
+                InAppUpdater.check(this@SettingsActivity) { message ->
+                    updateStatus.text = message
+                    this.isEnabled = true
+                }
+            }
+        })
+        root.addView(updateStatus)
+
         root.addView(backgroundPreview, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 220))
         backgroundPicker = Spinner(this)
         root.addView(backgroundPicker)
@@ -246,6 +284,23 @@ class SettingsActivity : Activity() {
         })
 
         root.addView(TextView(this).apply {
+            text = "Weather overlay layout"
+            textSize = 22f
+            setPadding(0, 28, 0, 8)
+        })
+        root.addView(TextView(this).apply {
+            text = "Fine-tune the weather overlay independently. The drawing uses a fixed logical design space; these controls only change its position, scale and reference origin."
+            textSize = 13f
+            setPadding(8, 0, 0, 8)
+        })
+        overlayTx = seek(root, "Overlay translate X", ((prefs.getString("overlay.translate_x", "875")?.toFloatOrNull() ?: 875f) + 1000).toInt(), 3000)
+        overlayTy = seek(root, "Overlay translate Y", ((prefs.getString("overlay.translate_y", "12.5")?.toFloatOrNull() ?: 12.5f) + 500).toInt(), 1500)
+        overlaySx = seek(root, "Overlay horizontal scale", ((prefs.getString("overlay.scale_x", "0.5506")?.toFloatOrNull() ?: 0.5506f) * 1000).toInt(), 1500)
+        overlaySy = seek(root, "Overlay vertical scale", ((prefs.getString("overlay.scale_y", "0.4402")?.toFloatOrNull() ?: 0.4402f) * 1000).toInt(), 1500)
+        overlayOx = seek(root, "Overlay origin X", ((prefs.getString("overlay.origin_x", "-540")?.toFloatOrNull() ?: -540f) + 1000).toInt(), 2000)
+        overlayOy = seek(root, "Overlay origin Y", ((prefs.getString("overlay.origin_y", "-80")?.toFloatOrNull() ?: -80f) + 1000).toInt(), 2000)
+
+        root.addView(TextView(this).apply {
             text = "Colour palette & appearance"
             textSize = 22f
             setPadding(0, 28, 0, 8)
@@ -278,8 +333,58 @@ class SettingsActivity : Activity() {
             "palette.weather_icon" to "Weather icon colour", "palette.divider" to "Forecast divider colour",
             "palette.festive" to "Festive greenery colour", "palette.snow" to "Snow decoration colour"
         )
-        paletteLabels.forEach { (key, label) ->
-            paletteFields[key] = field(root, label, prefs.getString(key, paletteDefaults.getValue(key)) ?: paletteDefaults.getValue(key))
+        // Explicit TV-friendly rows: each row contains three or four equally
+        // weighted cells. Avoid GridLayout auto-placement, which can collapse
+        // into a single column on some Android TV density/configuration combos.
+        val paletteColumns = if (resources.configuration.screenWidthDp >= 1100) 4 else 3
+        paletteLabels.entries.toList().chunked(paletteColumns).forEach { rowItems ->
+            val paletteRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+            rowItems.forEach { (key, label) ->
+                val cell = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(8, 4, 8, 8)
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        1f
+                    )
+                }
+                val compactLabel = when (key) {
+                    "palette.panel" -> "Panel background"
+                    "palette.border" -> "Neon border"
+                    "palette.glow" -> "Neon glow"
+                    "palette.primary_text" -> "Main text"
+                    "palette.secondary_text" -> "Secondary text"
+                    "palette.temperature" -> "Temperature"
+                    "palette.weather_icon" -> "Weather icon"
+                    "palette.divider" -> "Forecast divider"
+                    "palette.festive" -> "Festive greenery"
+                    "palette.snow" -> "Snow decoration"
+                    else -> label
+                }
+                paletteFields[key] = field(
+                    cell,
+                    compactLabel,
+                    prefs.getString(key, paletteDefaults.getValue(key)) ?: paletteDefaults.getValue(key)
+                )
+                // Keep each cell compact and prevent long labels expanding the row.
+                (cell.getChildAt(0) as? TextView)?.apply {
+                    textSize = 13f
+                    maxLines = 2
+                }
+                paletteRow.addView(cell)
+            }
+            // Fill the unused final cells so the last row remains aligned.
+            repeat(paletteColumns - rowItems.size) {
+                paletteRow.addView(LinearLayout(this), LinearLayout.LayoutParams(0, 1, 1f))
+            }
+            root.addView(paletteRow)
         }
         root.addView(TextView(this).apply {
             text = "Use #RRGGBB or #AARRGGBB. Panel transparency is controlled by the alpha value in its 8-digit colour. Presets can be customised before saving a theme."
@@ -363,6 +468,14 @@ class SettingsActivity : Activity() {
         root.addView(worldWeatherWatch)
 
         themeName = field(root, "New theme name (e.g. Christmas GSD)", "")
+        // Use a dedicated text-entry dialog for Android TV. The dialog's EditText
+        // receives D-pad focus and opens the system TV keyboard; the underlying
+        // settings field is only a display/selection target.
+        themeName.isFocusable = true
+        themeName.isFocusableInTouchMode = true
+        themeName.isCursorVisible = false
+        themeName.isClickable = true
+        themeName.setOnClickListener { showThemeNameDialog() }
         root.addView(Button(this).apply {
             text = "Save current layout as a new theme"
             setOnClickListener {
@@ -601,12 +714,91 @@ class SettingsActivity : Activity() {
         })
     }
 
+    private fun showThemeNameDialog() {
+        val editor = EditText(this).apply {
+            setSingleLine(true)
+            textSize = 20f
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            imeOptions = EditorInfo.IME_ACTION_DONE
+            setText(themeName.text)
+            setSelection(text.length)
+            isFocusable = true
+            isFocusableInTouchMode = true
+        }
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle("New theme name")
+            .setMessage("Enter a name using the TV keyboard.")
+            .setView(editor)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Use name", null)
+            .create()
+        dialog.window?.setSoftInputMode(
+            android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or
+                android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        )
+        dialog.setOnShowListener {
+            editor.requestFocus()
+            editor.postDelayed({
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(editor, InputMethodManager.SHOW_FORCED)
+            }, 300)
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val entered = editor.text.toString().trim()
+                if (entered.isBlank()) {
+                    editor.error = "Enter a theme name"
+                    editor.requestFocus()
+                } else {
+                    themeName.setText(entered)
+                    dialog.dismiss()
+                }
+            }
+            editor.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+                    true
+                } else false
+            }
+        }
+        dialog.show()
+    }
+
     private fun field(root: LinearLayout, label: String, value: String): EditText {
         root.addView(TextView(this).apply { text = label; textSize = 15f; setPadding(0, 10, 0, 4) })
         return EditText(this).also { input ->
             input.setSingleLine(true)
             input.textSize = 18f
             input.setText(value)
+            input.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            input.imeOptions = EditorInfo.IME_ACTION_DONE
+            input.isFocusable = true
+            input.isFocusableInTouchMode = true
+            input.isClickable = true
+            input.isLongClickable = true
+            // Android TV: make the field selectable with the D-pad and explicitly
+            // request the on-screen keyboard when the user activates it.
+            input.setOnClickListener {
+                input.requestFocus()
+                input.post {
+                    (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                        .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+                }
+            }
+            input.setOnFocusChangeListener { view, hasFocus ->
+                if (hasFocus) {
+                    view.post {
+                        (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                            .showSoftInput(input, InputMethodManager.SHOW_IMPLICIT)
+                    }
+                }
+            }
+            input.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == EditorInfo.IME_ACTION_DONE) {
+                    (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                        .hideSoftInputFromWindow(input.windowToken, 0)
+                    input.clearFocus()
+                    true
+                } else false
+            }
             root.addView(input)
         }
     }
@@ -803,6 +995,12 @@ class SettingsActivity : Activity() {
             .putString("alerts.display_mode", if (warningDisplayMode.selectedItemPosition == 1) "inside_panel" else "separate_banner")
             .putBoolean("alerts.show_details", showWarningDetails.isChecked)
             .putString("readout.scale", String.format(java.util.Locale.US, "%.2f", (readoutSize.progress + 75) / 100f))
+            .putString("overlay.translate_x", (overlayTx.progress - 1000).toString())
+            .putString("overlay.translate_y", String.format(java.util.Locale.US, "%.1f", overlayTy.progress - 500f))
+            .putString("overlay.scale_x", String.format(java.util.Locale.US, "%.4f", overlaySx.progress / 1000f))
+            .putString("overlay.scale_y", String.format(java.util.Locale.US, "%.4f", overlaySy.progress / 1000f))
+            .putString("overlay.origin_x", (overlayOx.progress - 1000).toString())
+            .putString("overlay.origin_y", (overlayOy.progress - 1000).toString())
             .putBoolean("clock.visible", showClock.isChecked)
             .putBoolean("date.visible", showDate.isChecked)
             .putBoolean("clock.24_hour", clockFormat.selectedItemPosition == 0)
