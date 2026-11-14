@@ -20,14 +20,8 @@ android {
         applicationId = "com.christmasgsd.weather"
         minSdk = 23
         targetSdk = 28
-        // Release workflow supplies these properties from the vMAJOR.MINOR.PATCH tag.
-        // Defaults remain for ordinary main-branch builds.
-        versionCode = providers.gradleProperty("appVersionCode").orNull?.toIntOrNull() ?: 5
-        versionName = providers.gradleProperty("appVersionName").orNull ?: "0.5.0"
-    }
-
-    lint {
-        disable += "ExpiredTargetSdkVersion"
+        versionCode = 5
+        versionName = "0.5.0"
     }
 
     buildTypes {
